@@ -8,7 +8,7 @@ import scipy.signal
 import soundfile as sf
 from matplotlib import ticker
 from matplotlib.figure import Figure
-from scipy.signal import spectrogram, chirp, buttord, butter, lfilter, tf2zpk
+from scipy.signal import spectrogram, chirp, buttord, butter, lfilter, tf2zpk, freqz
 
 
 def graph(fun: callable, output_file: str, x_axis, y_axis, x_label: str = None, y_label: str = None, title: str = None):
@@ -344,6 +344,30 @@ def process(src_file: str, audio_dir: str, img_dir: str) -> None:
 
     fig.tight_layout()
     fig.savefig(f"{img_dir}/08-zeros-poles.pdf", bbox_inches="tight", pad_inches=0)
+
+    # Task 9
+    fig: Figure
+    fig, axes = plt.subplots(len(filters), 2, figsize=(8, 3 * len(filters)))
+
+    i = 0
+    for (b, a) in filters:
+        freq, freq_res = freqz(b, a)
+
+        axes[i][0].plot(freq / 2 / np.pi * sample_rate, np.abs(freq_res))
+        axes[i][0].set_xlabel("Frekvence $[Hz]$")
+        axes[i][0].set_title(f"Modul frekv. char. filtru pro ${cos_frequencies[i]}\\ Hz$")
+
+        axes[i][1].plot(freq / 2 / np.pi * sample_rate, np.angle(freq_res))
+        axes[i][1].set_xlabel("Frekvence $[Hz]$")
+        axes[i][1].set_title(f"Arg. frekv. char. filtru pro ${cos_frequencies[i]}\\ Hz$")
+
+        axes[i][0].grid(alpha=0.5, linestyle='--')
+        axes[i][1].grid(alpha=0.5, linestyle='--')
+
+        i += 1
+
+    fig.tight_layout()
+    fig.savefig(f"{img_dir}/09-freq-character.pdf", bbox_inches="tight", pad_inches=0)
 
 
 def main() -> None:

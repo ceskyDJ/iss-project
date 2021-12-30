@@ -1,4 +1,5 @@
 import shutil
+import time
 from typing import List
 
 import matplotlib.axes
@@ -55,8 +56,34 @@ def dft(signal: np.array) -> np.array:
     return np.dot(base_matrix, signal)
 
 
+def nice_time(nanoseconds: int) -> str:
+    units = ["s", "ms", "μs", "ns"]
+    big_units = ["h", "min"]
+
+    exp = 9
+    i = 0
+    while nanoseconds / 10 ** exp < 1:
+        exp -= 3
+        i += 1
+
+    if nanoseconds / 10 ** 9 < 60:
+        return str(np.round(nanoseconds / 10 ** exp, 2)) + f" {units[i]}"
+    else:
+        seconds = nanoseconds / 10 ** 9
+
+    exp = 2
+    i = 0
+    while seconds / 60 ** exp < 1:
+        exp -= 1
+        i += 1
+
+    return str(np.round(seconds / 60 ** exp, 2)) + f" {big_units[i]}"
+
+
 def process(src_file: str, audio_dir: str, img_dir: str) -> None:
     # Task 1
+    print("Task 1\n======")
+
     # Load WAV
     signal: np.ndarray
     sample_rate: int
@@ -65,7 +92,7 @@ def process(src_file: str, audio_dir: str, img_dir: str) -> None:
     # Samples and length
     samples = signal.size
     length = samples / sample_rate
-    time = np.arange(samples) / sample_rate
+    time_axis = np.arange(samples) / sample_rate
 
     # Minimum and maximum values
     # noinspection PyArgumentList
@@ -74,13 +101,12 @@ def process(src_file: str, audio_dir: str, img_dir: str) -> None:
     max_val = signal.max()
 
     # Print counted information
-    print("Task 1\n======")
     print(f"Min value: {min_val}\nMax value: {max_val}")
     print(f"Sample rate (Hz): {sample_rate}")
     print(f"Samples: {samples}\nLength (s): {length}")
 
     # Draw input signal
-    plot(f"{img_dir}/01-input-signal.pdf", time, signal, "Čas $[s]$")
+    plot(f"{img_dir}/01-input-signal.pdf", time_axis, signal, "Čas $[s]$")
 
     # Task 2
     frame_size = 1024
@@ -104,117 +130,127 @@ def process(src_file: str, audio_dir: str, img_dir: str) -> None:
     frames_cols = np.column_stack(frames)
 
     # Draw all frames
-    # i = 0
-    # for frame in frames:
-    #     plt.figure()
-    #
-    #     samples = frame.size
-    #     time = np.arange(samples) / sample_rate
-    #
-    #     plt.plot(time, frame)
-    #
-    #     axes: matplotlib.axes.Axes
-    #     axes = plt.gca()
-    #     axes.set_xlabel("Čas $[s]$")
-    #
-    #     plt.savefig(f"{img_dir}/frames/frame-{i}.pdf", bbox_inches="tight", pad_inches=0)
-    #     plt.close()
-    #     i += 1
+    i = 0
+    for frame in frames:
+        plt.figure()
+
+        frame_samples = frame.size
+        time_axis = np.arange(frame_samples) / sample_rate
+
+        plt.plot(time_axis, frame)
+
+        axes: matplotlib.axes.Axes
+        axes = plt.gca()
+        axes.set_xlabel("Čas $[s]$")
+
+        plt.savefig(f"{img_dir}/frames/frame-{i}.pdf", bbox_inches="tight", pad_inches=0)
+        plt.close()
+        i += 1
 
     # Copy the best frame
     # Chosen manually
     shutil.copy(f"{img_dir}/frames/frame-42.pdf", f"{img_dir}/02-nice-frame.pdf")
 
     # Task 3
-    # nice_frame_my_dft = dft(frames_cols[:, 43])
-    # nice_frame_fft = np.fft.fft(frames_cols[:, 43])
-    # freq = (np.arange(frame_size) / frame_size) * sample_rate
-    #
-    # fig: Figure
-    # axes: List[matplotlib.axes.Axes]
-    # fig, axes = plt.subplots(2, 1)
-    # used_samples = frame_size // 2
-    #
-    # axes[0].plot(freq[:used_samples], np.abs(nice_frame_my_dft[:used_samples]))
-    # axes[0].set_title("DFT pomocí vlastní funkce")
-    # axes[0].set_xlabel("Frekvence $[Hz]$")
-    #
-    # axes[1].plot(freq[:used_samples], np.abs(nice_frame_fft[:used_samples]))
-    # axes[1].set_title("DFT pomocí np.fft.fft()")
-    # axes[1].set_xlabel("Frekvence $[Hz]$")
-    #
-    # fig.tight_layout()
-    # fig.savefig(f"{img_dir}/03-dft-module.pdf", bbox_inches="tight", pad_inches=0)
+    print("\nTask 3\n======")
+
+    my_dft_start = time.time_ns()
+    nice_frame_my_dft = dft(frames_cols[:, 43])
+    my_dft_end = time.time_ns()
+    print("My DFT time: " + nice_time(my_dft_end - my_dft_start))
+
+    fft_start = time.time_ns()
+    nice_frame_fft = np.fft.fft(frames_cols[:, 43])
+    fft_end = time.time_ns()
+    print("FFT time: " + nice_time(fft_end - fft_start))
+
+    freq = (np.arange(frame_size) / frame_size) * sample_rate
+
+    fig: Figure
+    axes: List[matplotlib.axes.Axes]
+    fig, axes = plt.subplots(2, 1)
+    used_samples = frame_size // 2
+
+    axes[0].plot(freq[:used_samples], np.abs(nice_frame_my_dft[:used_samples]))
+    axes[0].set_title("DFT pomocí vlastní funkce")
+    axes[0].set_xlabel("Frekvence $[Hz]$")
+
+    axes[1].plot(freq[:used_samples], np.abs(nice_frame_fft[:used_samples]))
+    axes[1].set_title("DFT pomocí np.fft.fft()")
+    axes[1].set_xlabel("Frekvence $[Hz]$")
+
+    fig.tight_layout()
+    fig.savefig(f"{img_dir}/03-dft-module.pdf", bbox_inches="tight", pad_inches=0)
 
     # Task 4
-    # freq, time, sgr = spectrogram(signal, sample_rate, nperseg=frame_size, noverlap=frame_overlap)
-    # sgr_log = 10 * np.log10(sgr + 1e-20)
-    #
-    # plt.figure(figsize=(9, 5))
-    #
-    # plt.pcolormesh(time, freq, sgr_log)
-    # plt.gca().set_xlabel('Čas $[s]$')
-    # plt.gca().set_ylabel('Frekvence $[Hz]$')
-    # cbar = plt.colorbar()
-    # cbar.set_label('Spektralní hustota výkonu $[dB]$', rotation=270, labelpad=15)
-    #
-    # plt.tight_layout()
-    # plt.savefig(f"{img_dir}/04-spectrogram.pdf", bbox_inches="tight", pad_inches=0)
+    freq, time_axis, sgr = spectrogram(signal, sample_rate, nperseg=frame_size, noverlap=frame_overlap)
+    sgr_log = 10 * np.log10(sgr + 1e-20)
+
+    plt.figure(figsize=(9, 5))
+
+    plt.pcolormesh(time_axis, freq, sgr_log)
+    plt.gca().set_xlabel('Čas $[s]$')
+    plt.gca().set_ylabel('Frekvence $[Hz]$')
+    cbar = plt.colorbar()
+    cbar.set_label('Spektralní hustota výkonu $[dB]$', rotation=270, labelpad=15)
+
+    plt.tight_layout()
+    plt.savefig(f"{img_dir}/04-spectrogram.pdf", bbox_inches="tight", pad_inches=0)
 
     # Task 5
     print("\nTask 5\n======")
     # Semiautomatically from the nice frame
-    # interesting_samples = 256
-    #
-    # modules = np.abs(nice_frame_fft[:interesting_samples])
-    #
-    # peaks, _ = scipy.signal.find_peaks(np.abs(nice_frame_fft[:interesting_samples]), height=5)
-    # peaks_freq = (peaks / frame_size) * sample_rate
-    #
-    # plot(f"{img_dir}/05-nice-frame-dft.pdf", freq[:interesting_samples], modules, "Frekvence $[Hz]$")
-    #
-    # print("Peak values:")
-    # i = 0
-    # for peak in peaks:
-    #     axes[0].annotate(f"{i}", (peaks_freq[i], modules[peak]), color="red")
-    #
-    #     print(f" - {i}: {peaks_freq[i]}")
-    #     i += 1
+    interesting_samples = 256
+
+    modules = np.abs(nice_frame_fft[:interesting_samples])
+
+    peaks, _ = scipy.signal.find_peaks(np.abs(nice_frame_fft[:interesting_samples]), height=5)
+    peaks_freq = (peaks / frame_size) * sample_rate
+
+    plot(f"{img_dir}/05-nice-frame-dft.pdf", freq[:interesting_samples], modules, "Frekvence $[Hz]$")
+
+    print("Peak values:")
+    i = 0
+    for peak in peaks:
+        axes[0].annotate(f"{i}", (peaks_freq[i], modules[peak]), color="red")
+
+        print(f" - {i}: {peaks_freq[i]}")
+        i += 1
 
     # Manually from spectrogram
-    # fig: Figure
-    # axes: List[matplotlib.axes.Axes]
-    # fig, axes = plt.subplots(4, 1, figsize=(9, 5))
-    #
-    # freq, time, sgr = spectrogram(signal, sample_rate, nperseg=frame_size, noverlap=frame_overlap)
-    # sgr_log = 10 * np.log10(sgr + 1e-20)
-    #
-    # axes[0].pcolormesh(time, freq, sgr_log)
-    # axes[0].set_xlabel('Čas $[s]$')
-    # axes[0].set_ylabel('Frekvence $[Hz]$')
-    # axes[0].set_ylim(bottom=600, top=700)
-    # axes[0].yaxis.set_major_locator(ticker.MultipleLocator(25))
-    #
-    # axes[1].pcolormesh(time, freq, sgr_log)
-    # axes[1].set_xlabel('Čas $[s]$')
-    # axes[1].set_ylabel('Frekvence $[Hz]$')
-    # axes[1].set_ylim(bottom=1300, top=1400)
-    # axes[1].yaxis.set_major_locator(ticker.MultipleLocator(25))
-    #
-    # axes[2].pcolormesh(time, freq, sgr_log)
-    # axes[2].set_xlabel('Čas $[s]$')
-    # axes[2].set_ylabel('Frekvence $[Hz]$')
-    # axes[2].set_ylim(bottom=1950, top=2050)
-    # axes[2].yaxis.set_major_locator(ticker.MultipleLocator(25))
-    #
-    # axes[3].pcolormesh(time, freq, sgr_log)
-    # axes[3].set_xlabel('Čas $[s]$')
-    # axes[3].set_ylabel('Frekvence $[Hz]$')
-    # axes[3].set_ylim(bottom=2650, top=2750)
-    # axes[3].yaxis.set_major_locator(ticker.MultipleLocator(25))
-    #
-    # fig.tight_layout()
-    # fig.savefig(f"{img_dir}/05-detailed-spectrogram.pdf", bbox_inches="tight", pad_inches=0)
+    fig: Figure
+    axes: List[matplotlib.axes.Axes]
+    fig, axes = plt.subplots(4, 1, figsize=(9, 5))
+
+    freq, time_axis, sgr = spectrogram(signal, sample_rate, nperseg=frame_size, noverlap=frame_overlap)
+    sgr_log = 10 * np.log10(sgr + 1e-20)
+
+    axes[0].pcolormesh(time_axis, freq, sgr_log)
+    axes[0].set_xlabel('Čas $[s]$')
+    axes[0].set_ylabel('Frekvence $[Hz]$')
+    axes[0].set_ylim(bottom=600, top=700)
+    axes[0].yaxis.set_major_locator(ticker.MultipleLocator(25))
+
+    axes[1].pcolormesh(time_axis, freq, sgr_log)
+    axes[1].set_xlabel('Čas $[s]$')
+    axes[1].set_ylabel('Frekvence $[Hz]$')
+    axes[1].set_ylim(bottom=1300, top=1400)
+    axes[1].yaxis.set_major_locator(ticker.MultipleLocator(25))
+
+    axes[2].pcolormesh(time_axis, freq, sgr_log)
+    axes[2].set_xlabel('Čas $[s]$')
+    axes[2].set_ylabel('Frekvence $[Hz]$')
+    axes[2].set_ylim(bottom=1950, top=2050)
+    axes[2].yaxis.set_major_locator(ticker.MultipleLocator(25))
+
+    axes[3].pcolormesh(time_axis, freq, sgr_log)
+    axes[3].set_xlabel('Čas $[s]$')
+    axes[3].set_ylabel('Frekvence $[Hz]$')
+    axes[3].set_ylim(bottom=2650, top=2750)
+    axes[3].yaxis.set_major_locator(ticker.MultipleLocator(25))
+
+    fig.tight_layout()
+    fig.savefig(f"{img_dir}/05-detailed-spectrogram.pdf", bbox_inches="tight", pad_inches=0)
 
     cos_frequencies = [675, 1350, 2025, 2700]
     print("Cosine frequencies:\n"
@@ -231,15 +267,15 @@ def process(src_file: str, audio_dir: str, img_dir: str) -> None:
     cos_signal = []
     i = 0
     for cos_freq in cos_frequencies:
-        time = np.linspace(0, length, samples)
-        gen_signal = chirp(time, f0=cos_freq, f1=cos_freq, t1=length, method='linear')
+        time_axis = np.linspace(0, length, samples)
+        gen_signal = chirp(time_axis, f0=cos_freq, f1=cos_freq, t1=length, method='linear')
 
         if len(cos_signal) == 0:
             cos_signal = gen_signal
         else:
             cos_signal = np.add(cos_signal, gen_signal)
 
-        axes[i].plot(time, gen_signal)
+        axes[i].plot(time_axis, gen_signal)
         axes[i].set_title(f"Cos signál s frekvencí ${cos_freq} Hz$")
         axes[i].set_xlabel("Čas $[s]$")
 
@@ -250,12 +286,12 @@ def process(src_file: str, audio_dir: str, img_dir: str) -> None:
     fig.tight_layout()
     fig.savefig(f"{img_dir}/06-cos-signals-divided.pdf", bbox_inches="tight", pad_inches=0)
 
-    freq, time, sgr = spectrogram(cos_signal, sample_rate, nperseg=frame_size, noverlap=frame_overlap)
+    freq, time_axis, sgr = spectrogram(cos_signal, sample_rate, nperseg=frame_size, noverlap=frame_overlap)
     sgr_log = 10 * np.log10(sgr + 1e-20)
 
     plt.figure(figsize=(9, 5))
 
-    plt.pcolormesh(time, freq, sgr_log)
+    plt.pcolormesh(time_axis, freq, sgr_log)
     plt.gca().set_xlabel('Čas $[s]$')
     plt.gca().set_ylabel('Frekvence $[Hz]$')
     cbar = plt.colorbar()
@@ -368,6 +404,34 @@ def process(src_file: str, audio_dir: str, img_dir: str) -> None:
 
     fig.tight_layout()
     fig.savefig(f"{img_dir}/09-freq-character.pdf", bbox_inches="tight", pad_inches=0)
+
+    # Task 10
+    filtered_signal = signal
+    time_axis = np.arange(samples) / sample_rate
+
+    # Apply filters
+    for (b, a) in filters:
+        filtered_signal = lfilter(b, a, filtered_signal)
+
+    plot(f"{img_dir}/10-filtered-signal.pdf", time_axis, filtered_signal, "Čas $[s]$")
+
+    # Save filtered signal
+    sf.write(f"{audio_dir}/clean_bandstop.wav", filtered_signal, sample_rate)
+
+    # Draw final spectrogram
+    freq, time_axis, sgr = spectrogram(filtered_signal, sample_rate, nperseg=frame_size, noverlap=frame_overlap)
+    sgr_log = 10 * np.log10(sgr + 1e-20)
+
+    plt.figure(figsize=(9, 5))
+
+    plt.pcolormesh(time_axis, freq, sgr_log)
+    plt.gca().set_xlabel('Čas $[s]$')
+    plt.gca().set_ylabel('Frekvence $[Hz]$')
+    cbar = plt.colorbar()
+    cbar.set_label('Spektralní hustota výkonu $[dB]$', rotation=270, labelpad=15)
+
+    plt.tight_layout()
+    plt.savefig(f"{img_dir}/10-final-spectrogram.pdf", bbox_inches="tight", pad_inches=0)
 
 
 def main() -> None:

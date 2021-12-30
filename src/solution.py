@@ -8,7 +8,7 @@ import scipy.signal
 import soundfile as sf
 from matplotlib import ticker
 from matplotlib.figure import Figure
-from scipy.signal import spectrogram, chirp, buttord, butter, lfilter
+from scipy.signal import spectrogram, chirp, buttord, butter, lfilter, tf2zpk
 
 
 def graph(fun: callable, output_file: str, x_axis, y_axis, x_label: str = None, y_label: str = None, title: str = None):
@@ -25,7 +25,7 @@ def graph(fun: callable, output_file: str, x_axis, y_axis, x_label: str = None, 
         axes.set_title(title)
 
     plt.tight_layout()
-    plt.savefig(output_file, bbox_inches='tight', pad_inches=0)
+    plt.savefig(output_file, bbox_inches="tight", pad_inches=0)
     plt.close()
 
 
@@ -117,7 +117,7 @@ def process(src_file: str, audio_dir: str, img_dir: str) -> None:
     #     axes = plt.gca()
     #     axes.set_xlabel("Čas $[s]$")
     #
-    #     plt.savefig(f"{img_dir}/frames/frame-{i}.pdf", bbox_inches='tight', pad_inches=0)
+    #     plt.savefig(f"{img_dir}/frames/frame-{i}.pdf", bbox_inches="tight", pad_inches=0)
     #     plt.close()
     #     i += 1
 
@@ -144,7 +144,7 @@ def process(src_file: str, audio_dir: str, img_dir: str) -> None:
     # axes[1].set_xlabel("Frekvence $[Hz]$")
     #
     # fig.tight_layout()
-    # fig.savefig(f"{img_dir}/03-dft-module.pdf", bbox_inches='tight', pad_inches=0)
+    # fig.savefig(f"{img_dir}/03-dft-module.pdf", bbox_inches="tight", pad_inches=0)
 
     # Task 4
     # freq, time, sgr = spectrogram(signal, sample_rate, nperseg=frame_size, noverlap=frame_overlap)
@@ -159,7 +159,7 @@ def process(src_file: str, audio_dir: str, img_dir: str) -> None:
     # cbar.set_label('Spektralní hustota výkonu $[dB]$', rotation=270, labelpad=15)
     #
     # plt.tight_layout()
-    # plt.savefig(f"{img_dir}/04-spectrogram.pdf", bbox_inches='tight', pad_inches=0)
+    # plt.savefig(f"{img_dir}/04-spectrogram.pdf", bbox_inches="tight", pad_inches=0)
 
     # Task 5
     print("\nTask 5\n======")
@@ -214,7 +214,7 @@ def process(src_file: str, audio_dir: str, img_dir: str) -> None:
     # axes[3].yaxis.set_major_locator(ticker.MultipleLocator(25))
     #
     # fig.tight_layout()
-    # fig.savefig(f"{img_dir}/05-detailed-spectrogram.pdf", bbox_inches='tight', pad_inches=0)
+    # fig.savefig(f"{img_dir}/05-detailed-spectrogram.pdf", bbox_inches="tight", pad_inches=0)
 
     cos_frequencies = [675, 1350, 2025, 2700]
     print("Cosine frequencies:\n"
@@ -248,7 +248,7 @@ def process(src_file: str, audio_dir: str, img_dir: str) -> None:
 
     # Spectrogram
     fig.tight_layout()
-    fig.savefig(f"{img_dir}/06-cos-signals-divided.pdf", bbox_inches='tight', pad_inches=0)
+    fig.savefig(f"{img_dir}/06-cos-signals-divided.pdf", bbox_inches="tight", pad_inches=0)
 
     freq, time, sgr = spectrogram(cos_signal, sample_rate, nperseg=frame_size, noverlap=frame_overlap)
     sgr_log = 10 * np.log10(sgr + 1e-20)
@@ -262,7 +262,7 @@ def process(src_file: str, audio_dir: str, img_dir: str) -> None:
     cbar.set_label('Spektralní hustota výkonu $[dB]$', rotation=270, labelpad=15)
 
     plt.tight_layout()
-    plt.savefig(f"{img_dir}/06-cos-signals-spectrum.pdf", bbox_inches='tight', pad_inches=0)
+    plt.savefig(f"{img_dir}/06-cos-signals-spectrum.pdf", bbox_inches="tight", pad_inches=0)
 
     # Save WAV
     sf.write(f"{audio_dir}/4cos.wav", cos_signal, sample_rate)
@@ -304,13 +304,46 @@ def process(src_file: str, audio_dir: str, img_dir: str) -> None:
         axes[i].stem(np.arange(imp_res_samples), imp_res, basefmt=' ', use_line_collection=True)
 
         axes[i].set_xlabel('$n$')
-        axes[i].set_title(f'Filtr pro frekvenci ${cos_frequencies[i]}\\ Hz$')
+        axes[i].set_title(f"Filtr pro frekvenci ${cos_frequencies[i]}\\ Hz$")
         axes[i].grid(alpha=0.5, linestyle='--')
 
         i += 1
 
     fig.tight_layout()
-    fig.savefig(f"{img_dir}/07-impulse-responses.pdf", bbox_inches='tight', pad_inches=0)
+    fig.savefig(f"{img_dir}/07-impulse-responses.pdf", bbox_inches="tight", pad_inches=0)
+
+    # Task 8
+    print("\nTask 8\n======")
+
+    fig: Figure
+    axes: List[matplotlib.axes.Axes]
+    fig, axes = plt.subplots(len(filters), 1, figsize=(4, 3.5 * len(filters)))
+
+    i = 0
+    for (b, a) in filters:
+        zeros, poles, _ = tf2zpk(b, a)
+
+        ang = np.linspace(0, 2 * np.pi, 100)
+        axes[i].plot(np.cos(ang), np.sin(ang))
+
+        axes[i].scatter(np.real(zeros), np.imag(zeros), marker="o", facecolors="none", edgecolors="r", label="nuly")
+        axes[i].scatter(np.real(poles), np.imag(poles), marker="x", color="g", label="póly")
+
+        axes[i].set_xlabel("Realná složka")
+        axes[i].set_ylabel("Imaginarní složka")
+        axes[i].grid(alpha=0.5, linestyle="--")
+        axes[i].legend(loc="upper right")
+
+        is_stable = (poles.size == 0) or np.all(np.abs(poles) < 1)
+
+        print(f"Filter for {cos_frequencies[i]} Hz:")
+        print(f"- Zeros: {zeros}")
+        print(f"- Poles: {poles}")
+        print(" - Filter is" + (" not" if not is_stable else "") + " stable")
+        i += 1
+
+    fig.tight_layout()
+    fig.savefig(f"{img_dir}/08-zeros-poles.pdf", bbox_inches="tight", pad_inches=0)
 
 
 def main() -> None:

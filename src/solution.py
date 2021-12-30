@@ -8,7 +8,7 @@ import scipy.signal
 import soundfile as sf
 from matplotlib import ticker
 from matplotlib.figure import Figure
-from scipy.signal import spectrogram, chirp, fftconvolve
+from scipy.signal import spectrogram, chirp, buttord, butter, lfilter
 
 
 def graph(fun: callable, output_file: str, x_axis, y_axis, x_label: str = None, y_label: str = None, title: str = None):
@@ -266,6 +266,51 @@ def process(src_file: str, audio_dir: str, img_dir: str) -> None:
 
     # Save WAV
     sf.write(f"{audio_dir}/4cos.wav", cos_signal, sample_rate)
+
+    # Task 7
+    print("\nTask 7\n======")
+
+    nyquist_freq = sample_rate / 2
+
+    # Create stop-band filters
+    filters = []
+    for cos_freq in cos_frequencies:
+        lowest_ord, wn = buttord(
+            wp=[(cos_freq - 50) / nyquist_freq, (cos_freq + 50) / nyquist_freq],
+            ws=[(cos_freq - 15) / nyquist_freq, (cos_freq + 15) / nyquist_freq],
+            gpass=3, gstop=40
+        )
+
+        b, a = butter(lowest_ord, wn, 'bandstop', output='ba')
+        result_filter = (b, a)
+        filters.append(result_filter)
+    filters = np.array(filters)
+
+    print("Coefficients of filters:")
+    print(filters)
+
+    # Impulse response
+    imp_res_samples = 64
+
+    fig: Figure
+    axes: List[matplotlib.axes.Axes]
+    fig, axes = plt.subplots(len(filters), 1, figsize=(10, 12))
+
+    i = 0
+    for (b, a) in filters:
+        unit_pulse = [1, *np.zeros(imp_res_samples - 1)]
+        imp_res = lfilter(b, a, unit_pulse)
+
+        axes[i].stem(np.arange(imp_res_samples), imp_res, basefmt=' ', use_line_collection=True)
+
+        axes[i].set_xlabel('$n$')
+        axes[i].set_title(f'Filtr pro frekvenci ${cos_frequencies[i]}\\ Hz$')
+        axes[i].grid(alpha=0.5, linestyle='--')
+
+        i += 1
+
+    fig.tight_layout()
+    fig.savefig(f"{img_dir}/07-impulse-responses.pdf", bbox_inches='tight', pad_inches=0)
 
 
 def main() -> None:

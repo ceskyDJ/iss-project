@@ -12,30 +12,20 @@ from matplotlib.figure import Figure
 from scipy.signal import spectrogram, chirp, buttord, butter, lfilter, tf2zpk, freqz
 
 
-def graph(fun: callable, output_file: str, x_axis, y_axis, x_label: str = None, y_label: str = None, title: str = None):
+def plot(output_file: str, x_axis, y_axis, x_label: str = None, title: str = None) -> None:
     plt.figure()
-    fun(x_axis, y_axis)
+    plt.plot(x_axis, y_axis)
 
     axes: matplotlib.axes.Axes
     axes = plt.gca()
     if x_label:
         axes.set_xlabel(x_label)
-    if y_label:
-        axes.set_ylabel(y_label)
     if title:
         axes.set_title(title)
 
     plt.tight_layout()
     plt.savefig(output_file, bbox_inches="tight", pad_inches=0)
     plt.close()
-
-
-def plot(output_file: str, x_axis, y_axis, x_label: str = None, y_label: str = None, title: str = None):
-    graph(plt.plot, output_file, x_axis, y_axis, x_label, y_label, title)
-
-
-def stem(output_file: str, x_axis, y_axis, x_label: str = None, y_label: str = None, title: str = None):
-    graph(plt.stem, output_file, x_axis, y_axis, x_label, y_label, title)
 
 
 def dft(signal: np.array) -> np.array:
@@ -81,7 +71,8 @@ def nice_time(nanoseconds: int) -> str:
 
 
 def process(src_file: str, audio_dir: str, img_dir: str) -> None:
-    # Task 1
+    # -----------------------------------------------------------------------------------------------------------------#
+    # Task 1                                                                                                      Task 1
     print("Task 1\n======")
 
     # Load WAV
@@ -108,7 +99,8 @@ def process(src_file: str, audio_dir: str, img_dir: str) -> None:
     # Draw input signal
     plot(f"{img_dir}/01-input-signal.pdf", time_axis, signal, "Čas $[s]$")
 
-    # Task 2
+    # -----------------------------------------------------------------------------------------------------------------#
+    # Task 2                                                                                                      Task 2
     frame_size = 1024
     frame_overlap = 512
 
@@ -125,7 +117,7 @@ def process(src_file: str, audio_dir: str, img_dir: str) -> None:
     frames = []
     for frame_num in range(round(samples / frame_overlap)):
         frame = np.array(signal_norm[frame_num * frame_overlap:frame_num * frame_overlap + frame_size])
-        frame = np.pad(frame, (0, frame_size - frame.size), 'constant')
+        frame = np.pad(frame, (0, frame_size - frame.size), "constant")
         frames.append(frame)
     frames_cols = np.column_stack(frames)
 
@@ -151,7 +143,8 @@ def process(src_file: str, audio_dir: str, img_dir: str) -> None:
     # Chosen manually
     shutil.copy(f"{img_dir}/frames/frame-42.pdf", f"{img_dir}/02-nice-frame.pdf")
 
-    # Task 3
+    # -----------------------------------------------------------------------------------------------------------------#
+    # Task 3                                                                                                      Task 3
     print("\nTask 3\n======")
 
     my_dft_start = time.time_ns()
@@ -182,22 +175,24 @@ def process(src_file: str, audio_dir: str, img_dir: str) -> None:
     fig.tight_layout()
     fig.savefig(f"{img_dir}/03-dft-module.pdf", bbox_inches="tight", pad_inches=0)
 
-    # Task 4
-    freq, time_axis, sgr = spectrogram(signal, sample_rate, nperseg=frame_size, noverlap=frame_overlap)
+    # -----------------------------------------------------------------------------------------------------------------#
+    # Task 4                                                                                                      Task 4
+    freq_axis, time_axis, sgr = spectrogram(signal, sample_rate, nperseg=frame_size, noverlap=frame_overlap)
     sgr_log = 10 * np.log10(sgr + 1e-20)
 
     plt.figure(figsize=(9, 5))
 
-    plt.pcolormesh(time_axis, freq, sgr_log)
-    plt.gca().set_xlabel('Čas $[s]$')
-    plt.gca().set_ylabel('Frekvence $[Hz]$')
+    plt.pcolormesh(time_axis, freq_axis, sgr_log)
+    plt.gca().set_xlabel("Čas $[s]$")
+    plt.gca().set_ylabel("Frekvence $[Hz]$")
     cbar = plt.colorbar()
-    cbar.set_label('Spektralní hustota výkonu $[dB]$', rotation=270, labelpad=15)
+    cbar.set_label("Spektralní hustota výkonu $[dB]$", rotation=270, labelpad=15)
 
     plt.tight_layout()
     plt.savefig(f"{img_dir}/04-spectrogram.pdf", bbox_inches="tight", pad_inches=0)
 
-    # Task 5
+    # -----------------------------------------------------------------------------------------------------------------#
+    # Task 5                                                                                                      Task 5
     print("\nTask 5\n======")
     # Semiautomatically from the nice frame
     interesting_samples = 256
@@ -207,15 +202,22 @@ def process(src_file: str, audio_dir: str, img_dir: str) -> None:
     peaks, _ = scipy.signal.find_peaks(np.abs(nice_frame_fft[:interesting_samples]), height=5)
     peaks_freq = (peaks / frame_size) * sample_rate
 
-    plot(f"{img_dir}/05-nice-frame-dft.pdf", freq[:interesting_samples], modules, "Frekvence $[Hz]$")
+    plt.figure()
+    plt.plot(freq[:interesting_samples], modules)
+
+    plt.gca().set_xlabel("Frekvence $[Hz]$")
 
     print("Peak values:")
     i = 0
     for peak in peaks:
-        axes[0].annotate(f"{i}", (peaks_freq[i], modules[peak]), color="red")
+        plt.annotate(f"{i}", (peaks_freq[i], modules[peak]), color="red")
 
         print(f" - {i}: {peaks_freq[i]}")
         i += 1
+
+    plt.tight_layout()
+    plt.savefig(f"{img_dir}/05-nice-frame-dft.pdf", bbox_inches="tight", pad_inches=0)
+    plt.close()
 
     # Manually from spectrogram
     fig: Figure
@@ -259,7 +261,8 @@ def process(src_file: str, audio_dir: str, img_dir: str) -> None:
           "- f3 = 2025 (3x)\n"
           "- f4 = 2700 (4x)")
 
-    # Task 6
+    # -----------------------------------------------------------------------------------------------------------------#
+    # Task 6                                                                                                      Task 6
     fig: Figure
     axes: List[matplotlib.axes.Axes]
     fig, axes = plt.subplots(len(cos_frequencies), 1, figsize=(9, 10))
@@ -282,10 +285,10 @@ def process(src_file: str, audio_dir: str, img_dir: str) -> None:
         i += 1
     cos_signal = np.array(cos_signal)
 
-    # Spectrogram
     fig.tight_layout()
     fig.savefig(f"{img_dir}/06-cos-signals-divided.pdf", bbox_inches="tight", pad_inches=0)
 
+    # Spectrogram
     freq, time_axis, sgr = spectrogram(cos_signal, sample_rate, nperseg=frame_size, noverlap=frame_overlap)
     sgr_log = 10 * np.log10(sgr + 1e-20)
 
@@ -303,7 +306,8 @@ def process(src_file: str, audio_dir: str, img_dir: str) -> None:
     # Save WAV
     sf.write(f"{audio_dir}/4cos.wav", cos_signal, sample_rate)
 
-    # Task 7
+    # -----------------------------------------------------------------------------------------------------------------#
+    # Task 7                                                                                                      Task 7
     print("\nTask 7\n======")
 
     nyquist_freq = sample_rate / 2
@@ -348,40 +352,48 @@ def process(src_file: str, audio_dir: str, img_dir: str) -> None:
     fig.tight_layout()
     fig.savefig(f"{img_dir}/07-impulse-responses.pdf", bbox_inches="tight", pad_inches=0)
 
-    # Task 8
+    # -----------------------------------------------------------------------------------------------------------------#
+    # Task 8                                                                                                      Task 8
     print("\nTask 8\n======")
 
     fig: Figure
     axes: List[matplotlib.axes.Axes]
-    fig, axes = plt.subplots(len(filters), 1, figsize=(4, 3.5 * len(filters)))
+    fig, axes = plt.subplots(2, 2, figsize=(8.5, 8))
 
     i = 0
+    j = 0
     for (b, a) in filters:
         zeros, poles, _ = tf2zpk(b, a)
 
         ang = np.linspace(0, 2 * np.pi, 100)
-        axes[i].plot(np.cos(ang), np.sin(ang))
+        axes[i][j].plot(np.cos(ang), np.sin(ang))
 
-        axes[i].scatter(np.real(zeros), np.imag(zeros), marker="o", facecolors="none", edgecolors="r", label="nuly")
-        axes[i].scatter(np.real(poles), np.imag(poles), marker="x", color="g", label="póly")
+        axes[i][j].scatter(np.real(zeros), np.imag(zeros), marker="o", facecolors="none", edgecolors="r", label="nuly")
+        axes[i][j].scatter(np.real(poles), np.imag(poles), marker="x", color="g", label="póly")
 
-        axes[i].set_xlabel("Realná složka")
-        axes[i].set_ylabel("Imaginarní složka")
-        axes[i].grid(alpha=0.5, linestyle="--")
-        axes[i].legend(loc="upper right")
+        axes[i][j].set_xlabel("Realná složka")
+        axes[i][j].set_ylabel("Imaginarní složka")
+        axes[i][j].set_title(f"Filtr pro frekvenci ${cos_frequencies[2 * i + j]}\\ Hz$")
+        axes[i][j].grid(alpha=0.5, linestyle="--")
+        axes[i][j].legend(loc="upper right")
 
         is_stable = (poles.size == 0) or np.all(np.abs(poles) < 1)
 
-        print(f"Filter for {cos_frequencies[i]} Hz:")
+        print(f"Filter for {cos_frequencies[2 * i + j]} Hz:")
         print(f"- Zeros: {zeros}")
         print(f"- Poles: {poles}")
         print(" - Filter is" + (" not" if not is_stable else "") + " stable")
-        i += 1
+
+        j += 1
+        if j >= 2:
+            i += 1
+            j = 0
 
     fig.tight_layout()
     fig.savefig(f"{img_dir}/08-zeros-poles.pdf", bbox_inches="tight", pad_inches=0)
 
-    # Task 9
+    # -----------------------------------------------------------------------------------------------------------------#
+    # Task 9                                                                                                      Task 9
     fig: Figure
     fig, axes = plt.subplots(len(filters), 2, figsize=(8, 3 * len(filters)))
 
@@ -405,7 +417,8 @@ def process(src_file: str, audio_dir: str, img_dir: str) -> None:
     fig.tight_layout()
     fig.savefig(f"{img_dir}/09-freq-character.pdf", bbox_inches="tight", pad_inches=0)
 
-    # Task 10
+    # -----------------------------------------------------------------------------------------------------------------#
+    # Task 10                                                                                                    Task 10
     filtered_signal = signal
     time_axis = np.arange(samples) / sample_rate
 
